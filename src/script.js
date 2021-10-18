@@ -52,6 +52,7 @@ gltfLoader.setDRACOLoader(dracoLoader)
 
 //Textures
 const textureLoader = new THREE.TextureLoader(loadingManager)
+const cubeTextureLoader = new THREE.CubeTextureLoader(loadingManager)
 
 //Fonts
 const fontLoader = new THREE.FontLoader(loadingManager)
@@ -94,7 +95,7 @@ const cameraSettings = {
     x: 79.39020840624255,
     y: 5.30854889867763,
     z: 44.76856193642261,
-    fov: 9.8,
+    fov: 8,
     targetx: 0,
     targety: 2,
     targetz: 0
@@ -112,8 +113,8 @@ const cameraSettings1 = {
 const oceanSettings = {
     oceanColor: 0x001e0f,
     oceanSunColor: 0xffffff,
-    distortionScale: 3.7,
-    timeModifier: 60
+    distortionScale: 2.5,
+    timeModifier: 320
 }
 
 /**
@@ -197,7 +198,19 @@ const matcapTexture = textureLoader.load('/textures/matcaps/1.png')
 const textMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture })
 const waterTexture = textureLoader.load('/textures/Misc/waternormals.jpg', function ( texture ) {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    })  
+    }) 
+    
+//Sky Textures
+const skyCubeTexture = cubeTextureLoader.load([
+    'textures/Sky/px.png',
+    'textures/Sky/nx.png',
+    'textures/Sky/py.png',
+    'textures/Sky/ny.png',
+    'textures/Sky/pz.png',
+    'textures/Sky/nz.png'
+  ]);
+
+scene.background = skyCubeTexture;
 
 //Dock Building
 const DockBuilding_Building_Texture = loadBakedTexture('/textures/DockBuilding/DockBuilding_Building.png', textureLoader)
@@ -509,9 +522,6 @@ scene.add(button1)
 const button2 = new THREE.Mesh(buttonGeometry,buttonMaterial)
 button2.position.set(9.5,2,26)
 scene.add(button2)
-
-
-
 
 /**
  * Lights
