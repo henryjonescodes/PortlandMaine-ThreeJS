@@ -5,6 +5,8 @@ import { FlyControls } from 'three/examples/jsm/controls/FlyControls.js'
 import * as dat from 'dat.gui'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import TWEEN from '@tweenjs/tween.js'
+import { Water } from 'three/examples/jsm/objects/Water.js';
 
 /**
  * Setup Global Utilities
@@ -18,17 +20,41 @@ let mixer = null
 /**
  * Set Up File loaders
  */
+
+//Loading Manager
+const loadingManager = new THREE.LoadingManager()
+
+loadingManager.onStart = function ( url, itemsLoaded, itemsTotal ) {
+	console.log( 'Started loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.' );
+};
+loadingManager.onLoad = function ( ) {
+    const loadingScreen = document.getElementById('loading-screen')
+    loadingScreen.classList.add( 'fade-out' );
+    loadingScreen.addEventListener( 'transitionend', onTransitionEnd );
+	console.log( 'Loading complete!');
+};
+loadingManager.onProgress = function ( url, itemsLoaded, itemsTotal ) {
+	console.log( 'Loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.' );
+};
+
+loadingManager.onError = function ( url ) {
+	console.log( 'There was an error loading ' + url );
+};
+
+function onTransitionEnd( event ) {
+	event.target.remove();
+}
 //Models
-const dracoLoader = new DRACOLoader()
+const dracoLoader = new DRACOLoader(loadingManager)
 dracoLoader.setDecoderPath('/draco/')
-const gltfLoader = new GLTFLoader()
+const gltfLoader = new GLTFLoader(loadingManager)
 gltfLoader.setDRACOLoader(dracoLoader)
 
 //Textures
-const textureLoader = new THREE.TextureLoader()
+const textureLoader = new THREE.TextureLoader(loadingManager)
 
 //Fonts
-const fontLoader = new THREE.FontLoader()
+const fontLoader = new THREE.FontLoader(loadingManager)
 
 //Helper function for main file loading
 function useLoader(url, loader) {
@@ -43,6 +69,17 @@ function loadBakedTexture(url, loader) {
     return temp
 }
 
+// function setUpBakedModel(url, textureUrl, promise){
+//     const texture = loadBakedTexture(textureUrl, textureLoader)
+//     const material = new THREE.MeshBasicMaterial({map: texture})
+//     let object
+//     promise = useLoader(url, gltfLoader).then(result => {
+//         result.scene.traverse((child) => {child.material = material});
+//         object = result.scene; 
+//     })
+//     return object
+// }
+
 /**
  * Constants
  */
@@ -50,15 +87,33 @@ const params = {
     helperx: 0,
     helpery: 2,
     helperz: 0,
-    camerax: 78.19784439614153,
-    cameray: 5.28121616626202,
-    cameraz: 46.76431407714505,
-    camera1x: 10.09952891398274,
-    camera1y: 5.283287750839582,
-    camera1z: 0.6046661058867199,
     fov: 8,
-    fov0: 8,
-    fov1: 40
+}
+
+const cameraSettings = {
+    x: 79.39020840624255,
+    y: 5.30854889867763,
+    z: 44.76856193642261,
+    fov: 9.8,
+    targetx: 0,
+    targety: 2,
+    targetz: 0
+}
+const cameraSettings1 = {
+    x: 10.09952891398274,
+    y: 5.283287750839582,
+    z: 0.6046661058867199,
+    fov: 40,
+    targetx: 9.2,
+    targety: 1.8,
+    targetz: 38
+}
+
+const oceanSettings = {
+    oceanColor: 0x001e0f,
+    oceanSunColor: 0xffffff,
+    distortionScale: 3.7,
+    timeModifier: 60
 }
 
 /**
@@ -109,25 +164,11 @@ helperGUI.add(params, 'helperz').min(-100).max(100).step(0.001)
  * Camera Setter Functions
  */
 debugObject.setCameraPosition0 = () => {
-    setCamera(
-        params.camerax,
-        params.cameray,
-        params.cameraz
-        )
-        camera.lookAt(new THREE.Vector3(0,2,0))
-        controls.target.set(0,2,0)
-        params.fov = params.fov0
+    updateCameraSettings(cameraSettings)
 }
 
 debugObject.setCameraPosition1 = () => {
-    setCamera(
-        params.camera1x,
-        params.camera1y,
-        params.camera1z
-        )
-        camera.lookAt(new THREE.Vector3(9.2,1.8,38))
-        controls.target.set(9.2,1.8,38)
-        params.fov = params.fov1
+    updateCameraSettings(cameraSettings1)
 }
 
 debugObject.logCamera = () => {
@@ -146,13 +187,17 @@ cameraGUI.add(debugObject, 'setCameraPosition0')
 cameraGUI.add(debugObject, 'setCameraPosition1')
 cameraGUI.add(debugObject, 'logCamera')
 
+//Start Loading Stuff -----------------------------------------------------------------------------------------------------
+
 /**
  * Load Materials
  */
-
 //General
 const matcapTexture = textureLoader.load('/textures/matcaps/1.png')
 const textMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture })
+const waterTexture = textureLoader.load('/textures/Misc/waternormals.jpg', function ( texture ) {
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    })  
 
 //Dock Building
 const DockBuilding_Building_Texture = loadBakedTexture('/textures/DockBuilding/DockBuilding_Building.png', textureLoader)
@@ -180,6 +225,19 @@ const MaineStatePier_Pylons_Material = new THREE.MeshBasicMaterial({ map: MaineS
 const MaineStatePier_Deco_Texture = loadBakedTexture('/textures/MaineStatePier/MaineStatePier_Deco.png', textureLoader)
 const MaineStatePier_Deco_Material = new THREE.MeshBasicMaterial({ map: MaineStatePier_Deco_Texture})
 
+//Park
+const Park_Surface_Texture = loadBakedTexture('/textures/Park/Park_Surface.png', textureLoader)
+const Park_Surface_Material = new THREE.MeshBasicMaterial({ map: Park_Surface_Texture})
+
+const Park_Foliage_Texture = loadBakedTexture('/textures/Park/Park_Foliage.png', textureLoader)
+const Park_Foliage_Material = new THREE.MeshBasicMaterial({ map: Park_Foliage_Texture})
+
+const Park_Deco_Texture = loadBakedTexture('/textures/Park/Park_Deco.png', textureLoader)
+const Park_Deco_Material = new THREE.MeshBasicMaterial({ map: Park_Deco_Texture})
+
+const Park_Rocks_Texture = loadBakedTexture('/textures/Park/Park_Rocks.png', textureLoader)
+const Park_Rocks_Material = new THREE.MeshBasicMaterial({ map: Park_Rocks_Texture})
+
 //Fort Gorges
 const FortGorges_Texture = loadBakedTexture('/textures/FortGorges/FortGorges.png', textureLoader)
 const FortGorges_Material = new THREE.MeshBasicMaterial({ map: FortGorges_Texture})
@@ -188,31 +246,26 @@ const FortGorges_Material = new THREE.MeshBasicMaterial({ map: FortGorges_Textur
 const BugLight_Texture = loadBakedTexture('/textures/BugLight/BugLight.png', textureLoader)
 const BugLight_Material = new THREE.MeshBasicMaterial({ map: BugLight_Texture})
 
-
 /**
  * Load Models
  */
 //Dock Building
 let DockBuilding_Building, DockBuilding_Surface, DockBuilding_Pylons, DockBuilding_Deco
-
 let DockBuilding_Building_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockBuilding_Model_Building.glb', gltfLoader)
     .then(result => {
             result.scene.traverse((child) => {child.material = DockBuilding_Buildings_Material});
             DockBuilding_Building = result.scene; 
         })
-
 let DockBuilding_Surface_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockBuilding_Model_Surface.glb', gltfLoader)
     .then(result => {  
             result.scene.traverse((child) => {child.material = DockBuilding_Surface_Material});
             DockBuilding_Surface = result.scene; 
         })
-
 let DockBuilding_Pylons_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockBuilding_Model_Pylons.glb', gltfLoader)
     .then(result => {  
             result.scene.traverse((child) => {child.material = DockBuilding_Pylons_Material});    
             DockBuilding_Pylons = result.scene; 
-        })
-        
+        })      
 let DockBuilding_Deco_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockBuilding_Model_Deco.glb', gltfLoader)
     .then(result => {  
             result.scene.traverse((child) => {child.material = DockBuilding_Deco_Material});
@@ -221,34 +274,52 @@ let DockBuilding_Deco_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockB
 
 //Maine State Pier
 let MaineStatePier_Building, MaineStatePier_Surface, MaineStatePier_Pylons, MaineStatePier_Deco
-
 let MaineStatePier_Building_Promise = useLoader('/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Building_8K.glb', gltfLoader)
     .then(result => {
             result.scene.traverse((child) => {child.material = MaineStatePier_Building_Material});
             MaineStatePier_Building = result.scene; 
         })
-
 let MaineStatePier_Surface_Promise = useLoader('/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Surface.glb', gltfLoader)
     .then(result => {  
             result.scene.traverse((child) => {child.material = MaineStatePier_Surface_Material});
             MaineStatePier_Surface = result.scene; 
         })
-
 let MaineStatePier_Pylons_Promise = useLoader('/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Pylons.glb', gltfLoader)
     .then(result => {  
             result.scene.traverse((child) => {child.material = MaineStatePier_Pylons_Material});    
             MaineStatePier_Pylons = result.scene; 
-        })
-        
+        })   
 let MaineStatePier_Deco_Promise = useLoader('/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Deco.glb', gltfLoader)
     .then(result => {  
             result.scene.traverse((child) => {child.material = MaineStatePier_Deco_Material});
             MaineStatePier_Deco = result.scene; 
         })
 
+//park
+let Park_Surface, Park_Foliage, Park_Deco, Park_Rocks
+let Park_Surface_Promise = useLoader('/models/Park/glTF-Draco/Park_Surface.glb', gltfLoader)
+    .then(result => {
+            result.scene.traverse((child) => {child.material = Park_Surface_Material});
+            Park_Surface = result.scene; 
+        })
+let Park_Foliage_Promise = useLoader('/models/Park/glTF-Draco/Park_Foliage.glb', gltfLoader)
+    .then(result => {  
+            result.scene.traverse((child) => {child.material = Park_Foliage_Material});
+            Park_Foliage = result.scene; 
+        })
+let Park_Deco_Promise = useLoader('/models/Park/glTF-Draco/Park_Deco.glb', gltfLoader)
+    .then(result => {  
+            result.scene.traverse((child) => {child.material = Park_Deco_Material});    
+            Park_Deco = result.scene; 
+        })       
+let Park_Rocks_Promise = useLoader('/models/Park/glTF-Draco/Park_Rocks.glb', gltfLoader)
+    .then(result => {  
+            result.scene.traverse((child) => {child.material = Park_Rocks_Material});
+            Park_Rocks = result.scene; 
+        })
+
 //Fort Gorges
 let FortGorges
-
 let FortGorges_Promise = useLoader('/models/FortGorges/glTF-Draco/FortGorges.glb', gltfLoader)
     .then(result => {  
             result.scene.traverse((child) => {child.material = FortGorges_Material});
@@ -257,21 +328,56 @@ let FortGorges_Promise = useLoader('/models/FortGorges/glTF-Draco/FortGorges.glb
 
 //Bug Light
 let BugLight
-
 let BugLight_Promise = useLoader('/models/BugLight/glTF-Draco/BugLight.glb', gltfLoader)
     .then(result => {  
             result.scene.traverse((child) => {child.material = BugLight_Material});
             BugLight = result.scene; 
         })
 
-//Fonts
-let helvetica
 
+/**
+ * Load Fonts
+ */
+let helvetica
 let fontLoadPromise = useLoader('/fonts/helvetiker_regular.typeface.json',fontLoader).then(result => { helvetica = result })
+
+//End Loading Hell -----------------------------------------------------------------------------------------------------
+
+/**
+ * Handle Loaded Data
+ */
+//Water
+function buildWater() {
+    const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+    const water = new Water(
+      waterGeometry,
+      {
+        textureWidth: 512,
+        textureHeight: 512,
+        waterNormals: waterTexture,
+        alpha: 1.0,
+        sunDirection: new THREE.Vector3(),
+        sunColor: oceanSettings.oceanSunColor,
+        waterColor: oceanSettings.oceanColor,
+        distortionScale: oceanSettings.distortionScale,
+        fog: scene.fog !== undefined
+      }
+    );
+    water.rotation.x =- Math.PI / 2;
+    scene.add(water);
+    
+    const waterUniforms = water.material.uniforms;
+    return water;
+}
+
+const water = buildWater()
+
+//gui
+const oceanFolder = gui.addFolder("Ocean")
+oceanFolder.add(oceanSettings, 'timeModifier').min(0).max(500).step(1)
 
 //Text objects
 let greetingText, cityText, cityText1, overViewText
-
 function generateTextGeometry(text, font, size, height){
      //Generate Text and add to scene
      const textGeometry = new THREE.TextGeometry(
@@ -293,7 +399,7 @@ function generateTextGeometry(text, font, size, height){
     return textGeometry
 }
 
-//Handle models after loading
+//Imported Models
 Promise.all([
         DockBuilding_Building_Promise,
         DockBuilding_Surface_Promise,
@@ -305,7 +411,11 @@ Promise.all([
         MaineStatePier_Deco_Promise,
         FortGorges_Promise,
         BugLight_Promise,
-        fontLoadPromise
+        fontLoadPromise,
+        Park_Surface_Promise,
+        Park_Foliage_Promise,
+        Park_Deco_Promise,
+        Park_Rocks_Promise
     ]).then(() => {
         //Set Scalce
         DockBuilding_Building.scale.set(0.5, 0.5, 0.5)
@@ -318,6 +428,10 @@ Promise.all([
         MaineStatePier_Deco.scale.set(0.5, 0.5, 0.5)
         FortGorges.scale.set(0.5, 0.5, 0.5)
         BugLight.scale.set(0.5, 0.5, 0.5)
+        Park_Surface.scale.set(0.5, 0.5, 0.5)
+        Park_Foliage.scale.set(0.5, 0.5, 0.5)
+        Park_Deco.scale.set(0.5, 0.5, 0.5)
+        Park_Rocks.scale.set(0.5, 0.5, 0.5)
 
         //add model to the scene
         scene.add(DockBuilding_Building)
@@ -330,19 +444,13 @@ Promise.all([
         scene.add(MaineStatePier_Deco)
         scene.add(FortGorges)
         scene.add(BugLight)
+        scene.add(Park_Surface)
+        scene.add(Park_Foliage)
+        scene.add(Park_Deco)
+        scene.add(Park_Rocks)
         
         //Log Objects
         console.log("promises kept")
-        console.log(DockBuilding_Building)
-        console.log(DockBuilding_Surface)
-        console.log(DockBuilding_Pylons)
-        console.log(DockBuilding_Deco)
-        console.log(MaineStatePier_Building)
-        console.log(MaineStatePier_Surface)
-        console.log(MaineStatePier_Pylons)
-        console.log(MaineStatePier_Deco)
-        console.log(FortGorges)
-        console.log(BugLight)
         console.log(scene)
         
         //Generate Text and add to scene
@@ -363,7 +471,7 @@ Promise.all([
         cityText.rotation.y = 1* Math.PI
         scene.add(cityText)
 
-        //City Text
+        //City Text2
         const cityTextGeometry1 = generateTextGeometry('and Software Engineer',helvetica, 0.5, 0.2)
         cityText1 = new THREE.Mesh(cityTextGeometry1, textMaterial)
         cityText1.position.set(9.5,8,41.3)
@@ -374,21 +482,36 @@ Promise.all([
         //continue the process
         tick()
 });
-
 /**
- * Floor
+ * Non Loaded Objects
  */
-const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000),
-    new THREE.MeshStandardMaterial({
-        color: '#444444',
-        metalness: 0,
-        roughness: 0.5
-    })
-)
-floor.receiveShadow = true
-floor.rotation.x = - Math.PI * 0.5
-scene.add(floor)
+//Floor
+// const floor = new THREE.Mesh(
+//     new THREE.PlaneGeometry(1000, 1000),
+//     new THREE.MeshStandardMaterial({
+//         color: '#444444',
+//         metalness: 0,
+//         roughness: 0.5
+//     })
+// )
+// floor.receiveShadow = true
+// floor.rotation.x = - Math.PI * 0.5
+// scene.add(floor)
+
+//3d Buttons
+const buttonMaterial = new THREE.MeshBasicMaterial({ color: '#ff0000' })
+const buttonGeometry = new THREE.SphereGeometry(0.5, 16, 16)
+
+const button1 = new THREE.Mesh(buttonGeometry,buttonMaterial)
+button1.position.set(10.7,1.8,6.2)
+scene.add(button1)
+
+const button2 = new THREE.Mesh(buttonGeometry,buttonMaterial)
+button2.position.set(9.5,2,26)
+scene.add(button2)
+
+
+
 
 /**
  * Lights
@@ -408,8 +531,40 @@ directionalLight.position.set(5, 5, 5)
 scene.add(directionalLight)
 
 /**
- * Sizes
+ * User Input
  */
+//Raycaster
+const raycaster = new THREE.Raycaster()
+let currentIntersect = null
+
+//Mouse
+const mouse = new THREE.Vector2()
+
+window.addEventListener('mousemove', (event) =>
+{
+    mouse.x = event.clientX / sizes.width * 2 - 1
+    mouse.y = - (event.clientY / sizes.height) * 2 + 1
+})
+
+window.addEventListener('click', () =>
+{
+    if(currentIntersect)
+    {
+        switch(currentIntersect.object)
+        {
+            case button1:
+                console.log('Button1')
+                updateCameraSettings(cameraSettings1)
+                break
+            case button2:
+                console.log('Button2')
+                updateCameraSettings(cameraSettings)
+                break
+        }
+    }
+})
+
+//Window resize
 const sizes = {
     width: window.innerWidth,
     height: window.innerHeight
@@ -436,12 +591,31 @@ window.addEventListener('resize', () =>
 // Base camera
 const camera = new THREE.PerspectiveCamera(params.fov, sizes.width / sizes.height, 0.1, 1000)
 camera.position.set(
-    params.camerax,
-    params.cameray,
-    params.cameraz
+    cameraSettings.x,
+    cameraSettings.y,
+    cameraSettings.z
 )
 
 scene.add(camera)
+
+function updateCameraSettings(settings){
+    camera.position.set(
+        settings.x,
+        settings.y,
+        settings.z
+    )
+    camera.lookAt(new THREE.Vector3(
+            settings.targetx,
+            settings.targety,
+            settings.targetz
+        ))
+    controls.target.set(
+            settings.targetx,
+            settings.targety,
+            settings.targetz
+        )
+    params.fov = settings.fov
+}
 
 // Controls
 const controls = new OrbitControls(camera, canvas)
@@ -460,7 +634,7 @@ renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 /**
- * Animate
+ * Animation Loop Stuff
  */
 const clock = new THREE.Clock()
 let previousTime = 0
@@ -470,6 +644,9 @@ const tick = () =>
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
+
+    //Water
+    water.material.uniforms[ 'time' ].value += 1.0 / oceanSettings.timeModifier;
 
     //Mixer
     if(mixer)
@@ -484,14 +661,48 @@ const tick = () =>
             params.helpery,
             params.helperz
         )
-    }
+    }    
 
     // Update camera
     camera.fov = params.fov
     camera.updateProjectionMatrix();
 
+    //Raycasting from mouse pointer
+    raycaster.setFromCamera(mouse, camera)
+
+    const objectsToTest = [button1, button2]
+    const intersects = raycaster.intersectObjects(objectsToTest)
+
+    if(intersects.length)
+    {
+        if(!currentIntersect)
+        {
+            console.log('mouse enter')
+        }
+
+        currentIntersect = intersects[0]
+    }
+    else
+    {
+        if(currentIntersect)
+        {
+            console.log('mouse leave')
+        }
+
+        currentIntersect = null
+    }
+
+    for(const object of objectsToTest)
+    {
+        object.material.color.set('#ff0000')
+    }
+    for(const intersect of intersects)
+    {
+        intersect.object.material.color.set('#0000ff')
+    }
+
     // Update controls
-    // controls.update()
+    controls.update()
 
     // Render
     renderer.render(scene, camera)
