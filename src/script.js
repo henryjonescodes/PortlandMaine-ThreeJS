@@ -5,6 +5,7 @@ import { FlyControls } from 'three/examples/jsm/controls/FlyControls.js'
 import * as dat from 'dat.gui'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import TWEEN from '@tweenjs/tween.js'
 
 /**
  * Setup Global Utilities
@@ -18,17 +19,41 @@ let mixer = null
 /**
  * Set Up File loaders
  */
+
+//Loading Manager
+const loadingManager = new THREE.LoadingManager()
+
+loadingManager.onStart = function ( url, itemsLoaded, itemsTotal ) {
+	console.log( 'Started loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.' );
+};
+loadingManager.onLoad = function ( ) {
+    const loadingScreen = document.getElementById('loading-screen')
+    loadingScreen.classList.add( 'fade-out' );
+    loadingScreen.addEventListener( 'transitionend', onTransitionEnd );
+	console.log( 'Loading complete!');
+};
+loadingManager.onProgress = function ( url, itemsLoaded, itemsTotal ) {
+	console.log( 'Loading file: ' + url + '.\nLoaded ' + itemsLoaded + ' of ' + itemsTotal + ' files.' );
+};
+
+loadingManager.onError = function ( url ) {
+	console.log( 'There was an error loading ' + url );
+};
+
+function onTransitionEnd( event ) {
+	event.target.remove();
+}
 //Models
-const dracoLoader = new DRACOLoader()
+const dracoLoader = new DRACOLoader(loadingManager)
 dracoLoader.setDecoderPath('/draco/')
-const gltfLoader = new GLTFLoader()
+const gltfLoader = new GLTFLoader(loadingManager)
 gltfLoader.setDRACOLoader(dracoLoader)
 
 //Textures
-const textureLoader = new THREE.TextureLoader()
+const textureLoader = new THREE.TextureLoader(loadingManager)
 
 //Fonts
-const fontLoader = new THREE.FontLoader()
+const fontLoader = new THREE.FontLoader(loadingManager)
 
 //Helper function for main file loading
 function useLoader(url, loader) {
@@ -50,15 +75,26 @@ const params = {
     helperx: 0,
     helpery: 2,
     helperz: 0,
-    camerax: 78.19784439614153,
-    cameray: 5.28121616626202,
-    cameraz: 46.76431407714505,
-    camera1x: 10.09952891398274,
-    camera1y: 5.283287750839582,
-    camera1z: 0.6046661058867199,
     fov: 8,
-    fov0: 8,
-    fov1: 40
+}
+
+const cameraSettings = {
+    x: 79.39020840624255,
+    y: 5.30854889867763,
+    z: 44.76856193642261,
+    fov: 9.8,
+    targetx: 0,
+    targety: 2,
+    targetz: 0
+}
+const cameraSettings1 = {
+    x: 10.09952891398274,
+    y: 5.283287750839582,
+    z: 0.6046661058867199,
+    fov: 40,
+    targetx: 9.2,
+    targety: 1.8,
+    targetz: 38
 }
 
 /**
@@ -109,25 +145,11 @@ helperGUI.add(params, 'helperz').min(-100).max(100).step(0.001)
  * Camera Setter Functions
  */
 debugObject.setCameraPosition0 = () => {
-    setCamera(
-        params.camerax,
-        params.cameray,
-        params.cameraz
-        )
-        camera.lookAt(new THREE.Vector3(0,2,0))
-        controls.target.set(0,2,0)
-        params.fov = params.fov0
+    updateCameraSettings(cameraSettings)
 }
 
 debugObject.setCameraPosition1 = () => {
-    setCamera(
-        params.camera1x,
-        params.camera1y,
-        params.camera1z
-        )
-        camera.lookAt(new THREE.Vector3(9.2,1.8,38))
-        controls.target.set(9.2,1.8,38)
-        params.fov = params.fov1
+    updateCameraSettings(cameraSettings1)
 }
 
 debugObject.logCamera = () => {
@@ -333,16 +355,6 @@ Promise.all([
         
         //Log Objects
         console.log("promises kept")
-        console.log(DockBuilding_Building)
-        console.log(DockBuilding_Surface)
-        console.log(DockBuilding_Pylons)
-        console.log(DockBuilding_Deco)
-        console.log(MaineStatePier_Building)
-        console.log(MaineStatePier_Surface)
-        console.log(MaineStatePier_Pylons)
-        console.log(MaineStatePier_Deco)
-        console.log(FortGorges)
-        console.log(BugLight)
         console.log(scene)
         
         //Generate Text and add to scene
@@ -363,7 +375,7 @@ Promise.all([
         cityText.rotation.y = 1* Math.PI
         scene.add(cityText)
 
-        //City Text
+        //City Text2
         const cityTextGeometry1 = generateTextGeometry('and Software Engineer',helvetica, 0.5, 0.2)
         cityText1 = new THREE.Mesh(cityTextGeometry1, textMaterial)
         cityText1.position.set(9.5,8,41.3)
@@ -389,6 +401,53 @@ const floor = new THREE.Mesh(
 floor.receiveShadow = true
 floor.rotation.x = - Math.PI * 0.5
 scene.add(floor)
+
+/**
+ * 3D Buttons
+ */
+
+//Test button
+const buttonMaterial = new THREE.MeshBasicMaterial({ color: '#ff0000' })
+const buttonGeometry = new THREE.SphereGeometry(0.5, 16, 16)
+
+const button1 = new THREE.Mesh(buttonGeometry,buttonMaterial)
+button1.position.set(10.7,1.8,6.2)
+scene.add(button1)
+
+const button2 = new THREE.Mesh(buttonGeometry,buttonMaterial)
+button2.position.set(9.5,2,26)
+scene.add(button2)
+
+//Raycaster
+const raycaster = new THREE.Raycaster()
+let currentIntersect = null
+
+//Mouse
+const mouse = new THREE.Vector2()
+
+window.addEventListener('mousemove', (event) =>
+{
+    mouse.x = event.clientX / sizes.width * 2 - 1
+    mouse.y = - (event.clientY / sizes.height) * 2 + 1
+})
+
+window.addEventListener('click', () =>
+{
+    if(currentIntersect)
+    {
+        switch(currentIntersect.object)
+        {
+            case button1:
+                console.log('Button1')
+                updateCameraSettings(cameraSettings1)
+                break
+            case button2:
+                console.log('Button2')
+                updateCameraSettings(cameraSettings)
+                break
+        }
+    }
+})
 
 /**
  * Lights
@@ -436,12 +495,31 @@ window.addEventListener('resize', () =>
 // Base camera
 const camera = new THREE.PerspectiveCamera(params.fov, sizes.width / sizes.height, 0.1, 1000)
 camera.position.set(
-    params.camerax,
-    params.cameray,
-    params.cameraz
+    cameraSettings.x,
+    cameraSettings.y,
+    cameraSettings.z
 )
 
 scene.add(camera)
+
+function updateCameraSettings(settings){
+    camera.position.set(
+        settings.x,
+        settings.y,
+        settings.z
+    )
+    camera.lookAt(new THREE.Vector3(
+            settings.targetx,
+            settings.targety,
+            settings.targetz
+        ))
+    controls.target.set(
+            settings.targetx,
+            settings.targety,
+            settings.targetz
+        )
+    params.fov = settings.fov
+}
 
 // Controls
 const controls = new OrbitControls(camera, canvas)
@@ -484,14 +562,48 @@ const tick = () =>
             params.helpery,
             params.helperz
         )
-    }
+    }    
 
     // Update camera
     camera.fov = params.fov
     camera.updateProjectionMatrix();
 
+    //Raycasting from mouse pointer
+    raycaster.setFromCamera(mouse, camera)
+
+    const objectsToTest = [button1, button2]
+    const intersects = raycaster.intersectObjects(objectsToTest)
+
+    if(intersects.length)
+    {
+        if(!currentIntersect)
+        {
+            console.log('mouse enter')
+        }
+
+        currentIntersect = intersects[0]
+    }
+    else
+    {
+        if(currentIntersect)
+        {
+            console.log('mouse leave')
+        }
+
+        currentIntersect = null
+    }
+
+    for(const object of objectsToTest)
+    {
+        object.material.color.set('#ff0000')
+    }
+    for(const intersect of intersects)
+    {
+        intersect.object.material.color.set('#0000ff')
+    }
+
     // Update controls
-    // controls.update()
+    controls.update()
 
     // Render
     renderer.render(scene, camera)
