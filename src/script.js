@@ -6,6 +6,7 @@ import * as dat from 'dat.gui'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import TWEEN from '@tweenjs/tween.js'
+import { Water } from 'three/examples/jsm/objects/Water.js';
 
 /**
  * Setup Global Utilities
@@ -108,6 +109,13 @@ const cameraSettings1 = {
     targetz: 38
 }
 
+const oceanSettings = {
+    oceanColor: 0x001e0f,
+    oceanSunColor: 0xffffff,
+    distortionScale: 3.7,
+    timeModifier: 60
+}
+
 /**
  * Helper Cube functions
  */
@@ -187,6 +195,9 @@ cameraGUI.add(debugObject, 'logCamera')
 //General
 const matcapTexture = textureLoader.load('/textures/matcaps/1.png')
 const textMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture })
+const waterTexture = textureLoader.load('/textures/Misc/waternormals.jpg', function ( texture ) {
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    })  
 
 //Dock Building
 const DockBuilding_Building_Texture = loadBakedTexture('/textures/DockBuilding/DockBuilding_Building.png', textureLoader)
@@ -335,6 +346,36 @@ let fontLoadPromise = useLoader('/fonts/helvetiker_regular.typeface.json',fontLo
 /**
  * Handle Loaded Data
  */
+//Water
+function buildWater() {
+    const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
+    const water = new Water(
+      waterGeometry,
+      {
+        textureWidth: 512,
+        textureHeight: 512,
+        waterNormals: waterTexture,
+        alpha: 1.0,
+        sunDirection: new THREE.Vector3(),
+        sunColor: oceanSettings.oceanSunColor,
+        waterColor: oceanSettings.oceanColor,
+        distortionScale: oceanSettings.distortionScale,
+        fog: scene.fog !== undefined
+      }
+    );
+    water.rotation.x =- Math.PI / 2;
+    scene.add(water);
+    
+    const waterUniforms = water.material.uniforms;
+    return water;
+}
+
+const water = buildWater()
+
+//gui
+const oceanFolder = gui.addFolder("Ocean")
+oceanFolder.add(oceanSettings, 'timeModifier').min(0).max(500).step(1)
+
 //Text objects
 let greetingText, cityText, cityText1, overViewText
 function generateTextGeometry(text, font, size, height){
@@ -444,19 +485,18 @@ Promise.all([
 /**
  * Non Loaded Objects
  */
-
 //Floor
-const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(1000, 1000),
-    new THREE.MeshStandardMaterial({
-        color: '#444444',
-        metalness: 0,
-        roughness: 0.5
-    })
-)
-floor.receiveShadow = true
-floor.rotation.x = - Math.PI * 0.5
-scene.add(floor)
+// const floor = new THREE.Mesh(
+//     new THREE.PlaneGeometry(1000, 1000),
+//     new THREE.MeshStandardMaterial({
+//         color: '#444444',
+//         metalness: 0,
+//         roughness: 0.5
+//     })
+// )
+// floor.receiveShadow = true
+// floor.rotation.x = - Math.PI * 0.5
+// scene.add(floor)
 
 //3d Buttons
 const buttonMaterial = new THREE.MeshBasicMaterial({ color: '#ff0000' })
@@ -604,6 +644,9 @@ const tick = () =>
     const elapsedTime = clock.getElapsedTime()
     const deltaTime = elapsedTime - previousTime
     previousTime = elapsedTime
+
+    //Water
+    water.material.uniforms[ 'time' ].value += 1.0 / oceanSettings.timeModifier;
 
     //Mixer
     if(mixer)
