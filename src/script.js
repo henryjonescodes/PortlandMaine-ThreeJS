@@ -153,13 +153,6 @@ const createBox = (width, height, depth, position) =>{
     return mesh
 }
 
-//Gui
-var helperGUI = gui.addFolder("Cube Helper")
-helperGUI.add(debugObject, 'placeHelper')
-helperGUI.add(params, 'helperx').min(-100).max(100).step(0.001)
-helperGUI.add(params, 'helpery').min(-100).max(100).step(0.001)
-helperGUI.add(params, 'helperz').min(-100).max(100).step(0.001)
-
 /**
  * Camera Setter Functions
  */
@@ -175,13 +168,6 @@ debugObject.logCamera = () => {
     console.log("Camera Details")
     console.log(camera)
 }
-
-//Gui
-var cameraGUI = gui.addFolder("Camera")
-cameraGUI.add(params, 'fov').min(0).max(120).step(0.001)
-cameraGUI.add(debugObject, 'setCameraPosition0')
-cameraGUI.add(debugObject, 'setCameraPosition1')
-cameraGUI.add(debugObject, 'logCamera')
 
 //Start Loading Stuff -----------------------------------------------------------------------------------------------------
 
@@ -276,7 +262,7 @@ let helvetica, matcapTexture
 let fontLoadPromise = loadWithPromise('/fonts/helvetiker_regular.typeface.json',fontLoader).then(result => { helvetica = result })
 let matcapTexturePromise = loadWithPromise('/textures/matcaps/1.png',textureLoader).then(result =>{ matcapTexture = result})
 
-//End Loading Hell -----------------------------------------------------------------------------------------------------
+// Generated Mesh Objects -----------------------------------------------------------------------------------------------------
 
 /**
  * Handle Loaded Data
@@ -361,11 +347,6 @@ function buildWater() {
 }
 
 const water = buildWater()
-
-//gui
-const oceanFolder = gui.addFolder("Ocean")
-oceanFolder.add(oceanSettings, 'timeModifier').min(0).max(500).step(1)
-
 
 /**
  * Non Loaded Objects
@@ -453,19 +434,39 @@ window.addEventListener('resize', () =>
     renderer.setSize(sizes.width, sizes.height)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 })
+// Scene Setup ---------------------------------------------------------------------------------------------------------------
 
 /**
- * Camera
+ * GUI Items
  */
-// Base camera
-const camera = new THREE.PerspectiveCamera(params.fov, sizes.width / sizes.height, 0.1, 1000)
-camera.position.set(
-    cameraSettings.x,
-    cameraSettings.y,
-    cameraSettings.z
-)
+// 3D Cursor GUI
+var helperGUI = gui.addFolder("Cube Helper")
+helperGUI.add(debugObject, 'placeHelper')
+helperGUI.add(params, 'helperx').min(-100).max(100).step(0.001)
+helperGUI.add(params, 'helpery').min(-100).max(100).step(0.001)
+helperGUI.add(params, 'helperz').min(-100).max(100).step(0.001)
 
-scene.add(camera)
+// Camera GUI
+var cameraGUI = gui.addFolder("Camera")
+cameraGUI.add(params, 'fov').min(0).max(120).step(0.001)
+cameraGUI.add(debugObject, 'setCameraPosition0')
+cameraGUI.add(debugObject, 'setCameraPosition1')
+cameraGUI.add(debugObject, 'logCamera')
+
+// Ocean GUI
+const oceanFolder = gui.addFolder("Ocean")
+oceanFolder.add(oceanSettings, 'timeModifier').min(0).max(500).step(1)
+
+/**
+ * Scene Setup Functions
+ */
+// Camera
+function setupCamera(){
+    const camera = new THREE.PerspectiveCamera(params.fov, sizes.width / sizes.height, 0.1, 1000)
+    camera.position.set(cameraSettings.x,cameraSettings.y,cameraSettings.z)
+    scene.add(camera)
+    return camera
+}
 
 function updateCameraSettings(settings){
     camera.position.set(settings.x,settings.y,settings.z)
@@ -475,24 +476,33 @@ function updateCameraSettings(settings){
 }
 
 // Controls
-const controls = new OrbitControls(camera, canvas)
-controls.target.set(0,2,0)
-controls.enableDamping = true
-
-/**
- * Renderer
- */
-const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
-})
-renderer.shadowMap.enabled = true
-renderer.shadowMap.type = THREE.PCFSoftShadowMap
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+function setupControls(){
+    const controls = new OrbitControls(camera, canvas)
+    controls.target.set(cameraSettings.targetx,cameraSettings.targety,cameraSettings.targetz)
+    controls.enableDamping = true
+    return controls
+}
+// Renderer
+function setupRenderer(){
+    const renderer = new THREE.WebGLRenderer({
+        canvas: canvas
+    })
+    renderer.shadowMap.enabled = true
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    renderer.setSize(sizes.width, sizes.height)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+    return renderer
+}
 
 /**
  * Setup Main Scene
  */
+let camera, controls, renderer
+function init(){
+    camera = setupCamera()
+    controls = setupControls()
+    renderer = setupRenderer()
+}
 
 /**
  * Animation Loop Stuff
@@ -548,4 +558,5 @@ const tick = () =>
     window.requestAnimationFrame(tick)
 }
 
+init()
 tick()
