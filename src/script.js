@@ -20,7 +20,6 @@ let mixer = null
 /**
  * Set Up File loaders
  */
-
 //Loading Manager
 const loadingManager = new THREE.LoadingManager()
 
@@ -65,22 +64,35 @@ function useLoader(url, loader) {
     });
 }
 
+
+
 function loadBakedTexture(url, loader) {
     const temp = loader.load(url)
     temp.flipY = false
     return temp
 }
 
-// function setUpBakedModel(url, textureUrl, promise){
-//     const texture = loadBakedTexture(textureUrl, textureLoader)
-//     const material = new THREE.MeshBasicMaterial({map: texture})
-//     let object
-//     promise = useLoader(url, gltfLoader).then(result => {
-//         result.scene.traverse((child) => {child.material = material});
-//         object = result.scene; 
-//     })
-//     return object
-// }
+function loadWithPromise(url, loader){
+    return new Promise((resolve, reject) => {
+        loader.load(url, data=> resolve(data), null, reject);
+      });
+}
+
+async function doLoading(url, loader, textureUrl, textureLoader){
+    const gltfData = await loadWithPromise(url, loader)
+    const texture = await loadWithPromise(textureUrl, textureLoader)
+    texture.flipY = false
+    const material = new THREE.MeshBasicMaterial({ map: texture})
+    gltfData.scene.traverse((child) => {child.material = material});    
+    let model = gltfData.scene
+    scene.add(model)
+    applyModelSettings(model)
+    return model
+}
+
+function applyModelSettings(model){
+    model.scale.set(0.5, 0.5, 0.5)
+}
 
 /**
  * Constants
@@ -214,140 +226,68 @@ const skyCubeTexture = cubeTextureLoader.load([
 scene.background = skyCubeTexture;
 
 //Dock Building
-const DockBuilding_Building_Texture = loadBakedTexture('/textures/DockBuilding/DockBuilding_Building.png', textureLoader)
-const DockBuilding_Buildings_Material = new THREE.MeshBasicMaterial({ map: DockBuilding_Building_Texture})
-
-const DockBuilding_Surface_Texture = loadBakedTexture('/textures/DockBuilding/DockBuilding_Surface.png', textureLoader)
-const DockBuilding_Surface_Material = new THREE.MeshBasicMaterial({ map: DockBuilding_Surface_Texture })
-
-const DockBuilding_Pylons_Texture = loadBakedTexture('/textures/DockBuilding/DockBuilding_Pylons.png', textureLoader)
-const DockBuilding_Pylons_Material = new THREE.MeshBasicMaterial({ map: DockBuilding_Pylons_Texture })
-
-const DockBuilding_Deco_Texture = loadBakedTexture('/textures/DockBuilding/DockBuilding_Deco.png', textureLoader)
-const DockBuilding_Deco_Material = new THREE.MeshBasicMaterial({ map: DockBuilding_Deco_Texture })
-
+let DockBuilding_Building = doLoading(
+    '/models/DockBuilding/glTF-Draco/DockBuilding_Model_Building.glb', gltfLoader,
+    '/textures/DockBuilding/DockBuilding_Building.png', textureLoader
+)
+let DockBuilding_Surface = doLoading(
+    '/models/DockBuilding/glTF-Draco/DockBuilding_Model_Surface.glb', gltfLoader,
+    '/textures/DockBuilding/DockBuilding_Surface.png', textureLoader
+)
+let DockBuilding_Pylons = doLoading(
+    '/models/DockBuilding/glTF-Draco/DockBuilding_Model_Pylons.glb', gltfLoader,
+    '/textures/DockBuilding/DockBuilding_Pylons.png', textureLoader
+)
+let DockBuilding_Deco = doLoading(
+    '/models/DockBuilding/glTF-Draco/DockBuilding_Model_Deco.glb', gltfLoader,
+    '/textures/DockBuilding/DockBuilding_Deco.png', textureLoader
+)
 //Maine State Pier
-const MaineStatePier_Building_Texture = loadBakedTexture('/textures/MaineStatePier/MaineStatePier_Building_8K.png', textureLoader)
-const MaineStatePier_Building_Material = new THREE.MeshBasicMaterial({ map: MaineStatePier_Building_Texture})
-
-const MaineStatePier_Surface_Texture = loadBakedTexture('/textures/MaineStatePier/MaineStatePier_Surface.png', textureLoader)
-const MaineStatePier_Surface_Material = new THREE.MeshBasicMaterial({ map: MaineStatePier_Surface_Texture})
-
-const MaineStatePier_Pylons_Texture = loadBakedTexture('/textures/MaineStatePier/MaineStatePier_Pylons.png', textureLoader)
-const MaineStatePier_Pylons_Material = new THREE.MeshBasicMaterial({ map: MaineStatePier_Pylons_Texture})
-
-const MaineStatePier_Deco_Texture = loadBakedTexture('/textures/MaineStatePier/MaineStatePier_Deco.png', textureLoader)
-const MaineStatePier_Deco_Material = new THREE.MeshBasicMaterial({ map: MaineStatePier_Deco_Texture})
-
+let MaineStatePier_Building = doLoading(
+    '/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Building_8K.glb', gltfLoader,
+    '/textures/MaineStatePier/MaineStatePier_Building_8K.png', textureLoader
+)
+let MaineStatePier_Surface = doLoading(
+    '/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Surface.glb', gltfLoader,
+    '/textures/MaineStatePier/MaineStatePier_Surface.png', textureLoader
+)
+let MaineStatePier_Pylons = doLoading(
+    '/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Pylons.glb', gltfLoader,
+    '/textures/MaineStatePier/MaineStatePier_Pylons.png', textureLoader
+)
+let MaineStatePier_Deco = doLoading(
+    '/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Deco.glb', gltfLoader,
+    '/textures/MaineStatePier/MaineStatePier_Deco.png', textureLoader
+)
 //Park
-const Park_Surface_Texture = loadBakedTexture('/textures/Park/Park_Surface.png', textureLoader)
-const Park_Surface_Material = new THREE.MeshBasicMaterial({ map: Park_Surface_Texture})
-
-const Park_Foliage_Texture = loadBakedTexture('/textures/Park/Park_Foliage.png', textureLoader)
-const Park_Foliage_Material = new THREE.MeshBasicMaterial({ map: Park_Foliage_Texture})
-
-const Park_Deco_Texture = loadBakedTexture('/textures/Park/Park_Deco.png', textureLoader)
-const Park_Deco_Material = new THREE.MeshBasicMaterial({ map: Park_Deco_Texture})
-
-const Park_Rocks_Texture = loadBakedTexture('/textures/Park/Park_Rocks.png', textureLoader)
-const Park_Rocks_Material = new THREE.MeshBasicMaterial({ map: Park_Rocks_Texture})
-
-//Fort Gorges
-const FortGorges_Texture = loadBakedTexture('/textures/FortGorges/FortGorges.png', textureLoader)
-const FortGorges_Material = new THREE.MeshBasicMaterial({ map: FortGorges_Texture})
-
-//Bug Light
-const BugLight_Texture = loadBakedTexture('/textures/BugLight/BugLight.png', textureLoader)
-const BugLight_Material = new THREE.MeshBasicMaterial({ map: BugLight_Texture})
-
-/**
- * Load Models
- */
-//Dock Building
-let DockBuilding_Building, DockBuilding_Surface, DockBuilding_Pylons, DockBuilding_Deco
-let DockBuilding_Building_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockBuilding_Model_Building.glb', gltfLoader)
-    .then(result => {
-            result.scene.traverse((child) => {child.material = DockBuilding_Buildings_Material});
-            DockBuilding_Building = result.scene; 
-        })
-let DockBuilding_Surface_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockBuilding_Model_Surface.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = DockBuilding_Surface_Material});
-            DockBuilding_Surface = result.scene; 
-        })
-let DockBuilding_Pylons_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockBuilding_Model_Pylons.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = DockBuilding_Pylons_Material});    
-            DockBuilding_Pylons = result.scene; 
-        })      
-let DockBuilding_Deco_Promise = useLoader('/models/DockBuilding/glTF-Draco/DockBuilding_Model_Deco.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = DockBuilding_Deco_Material});
-            DockBuilding_Deco = result.scene; 
-        })
-
-//Maine State Pier
-let MaineStatePier_Building, MaineStatePier_Surface, MaineStatePier_Pylons, MaineStatePier_Deco
-let MaineStatePier_Building_Promise = useLoader('/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Building_8K.glb', gltfLoader)
-    .then(result => {
-            result.scene.traverse((child) => {child.material = MaineStatePier_Building_Material});
-            MaineStatePier_Building = result.scene; 
-        })
-let MaineStatePier_Surface_Promise = useLoader('/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Surface.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = MaineStatePier_Surface_Material});
-            MaineStatePier_Surface = result.scene; 
-        })
-let MaineStatePier_Pylons_Promise = useLoader('/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Pylons.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = MaineStatePier_Pylons_Material});    
-            MaineStatePier_Pylons = result.scene; 
-        })   
-let MaineStatePier_Deco_Promise = useLoader('/models/MaineStatePier/glTF-Draco/MaineStatePier_Model_Deco.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = MaineStatePier_Deco_Material});
-            MaineStatePier_Deco = result.scene; 
-        })
-
-//park
-let Park_Surface, Park_Foliage, Park_Deco, Park_Rocks
-let Park_Surface_Promise = useLoader('/models/Park/glTF-Draco/Park_Surface.glb', gltfLoader)
-    .then(result => {
-            result.scene.traverse((child) => {child.material = Park_Surface_Material});
-            Park_Surface = result.scene; 
-        })
-let Park_Foliage_Promise = useLoader('/models/Park/glTF-Draco/Park_Foliage.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = Park_Foliage_Material});
-            Park_Foliage = result.scene; 
-        })
-let Park_Deco_Promise = useLoader('/models/Park/glTF-Draco/Park_Deco.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = Park_Deco_Material});    
-            Park_Deco = result.scene; 
-        })       
-let Park_Rocks_Promise = useLoader('/models/Park/glTF-Draco/Park_Rocks.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = Park_Rocks_Material});
-            Park_Rocks = result.scene; 
-        })
-
-//Fort Gorges
-let FortGorges
-let FortGorges_Promise = useLoader('/models/FortGorges/glTF-Draco/FortGorges.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = FortGorges_Material});
-            FortGorges = result.scene; 
-        })
+let Park_Surface = doLoading(
+    '/models/Park/glTF-Draco/Park_Surface.glb', gltfLoader,
+    '/textures/Park/Park_Surface.png', textureLoader
+)
+let Park_Foliage = doLoading(
+    '/models/Park/glTF-Draco/Park_Foliage.glb', gltfLoader,
+    '/textures/Park/Park_Foliage.png', textureLoader
+)
+let Park_Deco = doLoading(
+    '/models/Park/glTF-Draco/Park_Deco.glb', gltfLoader,
+    '/textures/Park/Park_Deco.png', textureLoader
+)
+let Park_Rocks = doLoading(
+    '/models/Park/glTF-Draco/Park_Rocks.glb', gltfLoader,
+    '/textures/Park/Park_Rocks.png', textureLoader
+)
 
 //Bug Light
-let BugLight
-let BugLight_Promise = useLoader('/models/BugLight/glTF-Draco/BugLight.glb', gltfLoader)
-    .then(result => {  
-            result.scene.traverse((child) => {child.material = BugLight_Material});
-            BugLight = result.scene; 
-        })
+let BugLight = doLoading(
+    '/models/BugLight/glTF-Draco/BugLight.glb', gltfLoader,
+    '/textures/BugLight/BugLight.png', textureLoader
+)
 
+//Bug Light
+let FortGorges = doLoading(
+    '/models/FortGorges/glTF-Draco/FortGorges.glb', gltfLoader,
+    '/textures/FortGorges/FortGorges.png', textureLoader
+)
 
 /**
  * Load Fonts
@@ -360,6 +300,37 @@ let fontLoadPromise = useLoader('/fonts/helvetiker_regular.typeface.json',fontLo
 /**
  * Handle Loaded Data
  */
+
+//Generate Scene Text after Font/Matcap Load
+Promise.all([fontLoadPromise]).then(() => {
+    //Greeting Text
+    const greetingTextGeometry = generateTextGeometry('Hi, I\'m Henry',helvetica, 0.5, 0.2)
+    greetingText = new THREE.Mesh(greetingTextGeometry, textMaterial)
+    greetingText.position.set(-50,5.5,-30)
+    greetingText.scale.set(5,5,5)
+    greetingText.rotation.y = .4* Math.PI
+    scene.add(greetingText)
+
+    //City Text
+    const cityTextGeometry = generateTextGeometry('I\'m a 3D Artist',helvetica, 0.5, 0.2)
+    cityText = new THREE.Mesh(cityTextGeometry, textMaterial)
+    cityText.position.set(9.5,11,41.3)
+    cityText.scale.set(5,5,5)
+    cityText.rotation.y = 1* Math.PI
+    scene.add(cityText)
+
+    //City Text2
+    const cityTextGeometry1 = generateTextGeometry('and Software Engineer',helvetica, 0.5, 0.2)
+    cityText1 = new THREE.Mesh(cityTextGeometry1, textMaterial)
+    cityText1.position.set(9.5,8,41.3)
+    cityText1.scale.set(3,3,3)
+    cityText1.rotation.y = 1* Math.PI
+    scene.add(cityText1)
+    
+    //continue the process
+    tick()
+});
+
 //Water
 function buildWater() {
     const waterGeometry = new THREE.PlaneGeometry(10000, 10000);
@@ -413,105 +384,9 @@ function generateTextGeometry(text, font, size, height){
     return textGeometry
 }
 
-//Imported Models
-Promise.all([
-        DockBuilding_Building_Promise,
-        DockBuilding_Surface_Promise,
-        DockBuilding_Pylons_Promise,
-        DockBuilding_Deco_Promise,
-        MaineStatePier_Building_Promise,
-        MaineStatePier_Surface_Promise,
-        MaineStatePier_Pylons_Promise,
-        MaineStatePier_Deco_Promise,
-        FortGorges_Promise,
-        BugLight_Promise,
-        fontLoadPromise,
-        Park_Surface_Promise,
-        Park_Foliage_Promise,
-        Park_Deco_Promise,
-        Park_Rocks_Promise
-    ]).then(() => {
-        //Set Scalce
-        DockBuilding_Building.scale.set(0.5, 0.5, 0.5)
-        DockBuilding_Surface.scale.set(0.5, 0.5, 0.5)
-        DockBuilding_Pylons.scale.set(0.5, 0.5, 0.5)
-        DockBuilding_Deco.scale.set(0.5, 0.5, 0.5)
-        MaineStatePier_Building.scale.set(0.5, 0.5, 0.5)
-        MaineStatePier_Surface.scale.set(0.5, 0.5, 0.5)
-        MaineStatePier_Pylons.scale.set(0.5, 0.5, 0.5)
-        MaineStatePier_Deco.scale.set(0.5, 0.5, 0.5)
-        FortGorges.scale.set(0.5, 0.5, 0.5)
-        BugLight.scale.set(0.5, 0.5, 0.5)
-        Park_Surface.scale.set(0.5, 0.5, 0.5)
-        Park_Foliage.scale.set(0.5, 0.5, 0.5)
-        Park_Deco.scale.set(0.5, 0.5, 0.5)
-        Park_Rocks.scale.set(0.5, 0.5, 0.5)
-
-        //add model to the scene
-        scene.add(DockBuilding_Building)
-        scene.add(DockBuilding_Surface)
-        scene.add(DockBuilding_Pylons)
-        scene.add(DockBuilding_Deco)
-        scene.add(MaineStatePier_Building)
-        scene.add(MaineStatePier_Surface)
-        scene.add(MaineStatePier_Pylons)
-        scene.add(MaineStatePier_Deco)
-        scene.add(FortGorges)
-        scene.add(BugLight)
-        scene.add(Park_Surface)
-        scene.add(Park_Foliage)
-        scene.add(Park_Deco)
-        scene.add(Park_Rocks)
-        
-        //Log Objects
-        console.log("promises kept")
-        console.log(scene)
-        
-        //Generate Text and add to scene
-        
-        //Greeting Text
-        const greetingTextGeometry = generateTextGeometry('Hi, I\'m Henry',helvetica, 0.5, 0.2)
-        greetingText = new THREE.Mesh(greetingTextGeometry, textMaterial)
-        greetingText.position.set(-50,5.5,-30)
-        greetingText.scale.set(5,5,5)
-        greetingText.rotation.y = .4* Math.PI
-        scene.add(greetingText)
-
-        //City Text
-        const cityTextGeometry = generateTextGeometry('I\'m a 3D Artist',helvetica, 0.5, 0.2)
-        cityText = new THREE.Mesh(cityTextGeometry, textMaterial)
-        cityText.position.set(9.5,11,41.3)
-        cityText.scale.set(5,5,5)
-        cityText.rotation.y = 1* Math.PI
-        scene.add(cityText)
-
-        //City Text2
-        const cityTextGeometry1 = generateTextGeometry('and Software Engineer',helvetica, 0.5, 0.2)
-        cityText1 = new THREE.Mesh(cityTextGeometry1, textMaterial)
-        cityText1.position.set(9.5,8,41.3)
-        cityText1.scale.set(3,3,3)
-        cityText1.rotation.y = 1* Math.PI
-        scene.add(cityText1)
-        
-        //continue the process
-        tick()
-});
 /**
  * Non Loaded Objects
  */
-//Floor
-// const floor = new THREE.Mesh(
-//     new THREE.PlaneGeometry(1000, 1000),
-//     new THREE.MeshStandardMaterial({
-//         color: '#444444',
-//         metalness: 0,
-//         roughness: 0.5
-//     })
-// )
-// floor.receiveShadow = true
-// floor.rotation.x = - Math.PI * 0.5
-// scene.add(floor)
-
 //3d Buttons
 const buttonMaterial = new THREE.MeshBasicMaterial({ color: '#ff0000' })
 const buttonGeometry = new THREE.SphereGeometry(0.5, 16, 16)
