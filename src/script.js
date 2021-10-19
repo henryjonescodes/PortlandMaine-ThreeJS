@@ -94,6 +94,9 @@ const cameraSettings = {
     x: 79.39020840624255,
     y: 5.30854889867763,
     z: 44.76856193642261,
+    cameraPositionX: 79.39020840624255,
+    cameraPositionY: 5.30854889867763,
+    cameraPositionZ: 44.76856193642261,
     fov: 8,
     targetx: 0,
     targety: 2,
@@ -103,6 +106,9 @@ const cameraSettings1 = {
     x: 10.09952891398274,
     y: 5.283287750839582,
     z: 0.6046661058867199,
+    cameraPositionX: 10.09952891398274,
+    cameraPositionY: 5.283287750839582,
+    cameraPositionZ: 0.6046661058867199,
     fov: 40,
     targetx: 9.2,
     targety: 1.8,
@@ -404,11 +410,14 @@ window.addEventListener('click', () =>
         {
             case button1:
                 console.log('Button1')
-                updateCameraSettings(cameraSettings1)
+                cameraToMarker(cameraSettings1)
+                // easeCameraTo(cameraSettings1)
+                // updateCameraSettings(cameraSettings1)
                 break
             case button2:
                 console.log('Button2')
-                updateCameraSettings(cameraSettings)
+                cameraToMarker(cameraSettings)
+                // updateCameraSettings(cameraSettings)
                 break
         }
     }
@@ -475,6 +484,59 @@ function updateCameraSettings(settings){
     params.fov = settings.fov
 }
 
+const marker = {
+    cameraPositionX: 10.09952891398274,
+    cameraPositionY: 5.283287750839582,
+    cameraPositionZ: 0.6046661058867199,
+    fov: 40,
+    targetx: 9.2,
+    targety: 1.8,
+    targetz: 38
+}
+const getNewPointOnVector = (p1, p2) => {
+    let distAway = 200;
+    let vector = {x: p2.x - p1.x, y: p2.y - p1.y, z:p2.z - p1.z};
+    let vl = Math.sqrt(Math.pow(vector.x, 2) + Math.pow(vector.y, 2) + Math.pow(vector.z, 2));
+    let vectorLength = {x: vector.x/vl, y: vector.y/vl, z: vector.z/vl};
+    let v = {x: distAway * vectorLength.x, y: distAway * vectorLength.y, z: distAway * vectorLength.z};
+    return {x: p2.x + v.x, y: p2.y + v.y, z: p2.z + v.z};
+  }
+
+function cameraToMarker(marker) {
+    const currentCamPosition = {x: camera.position.x, y: camera.position.y, z: camera.position.z};
+    const storedMarkerPosition = new THREE.Vector3(marker.targetx, marker.targety, marker.targetz);
+    const startQuaternion = camera.quaternion.clone();
+    camera.lookAt(storedMarkerPosition);
+    const endQuaternion = camera.quaternion.clone();
+    camera.quaternion.set(startQuaternion);
+    let time = {t: 0};
+    new TWEEN.Tween(time)
+        .to({t: 1}, 500)
+        .easing(TWEEN.Easing.Quadratic.InOut)
+        .onUpdate(() => {
+            camera.quaternion.slerpQuaternions(startQuaternion, endQuaternion, time.t);
+        })
+        .onComplete(() => {
+            new TWEEN.Tween(camera.position)
+            .to({
+                x: marker.cameraPositionX,
+                y: camera.position.y,
+                z: marker.cameraPositionZ,
+            })
+            .easing(TWEEN.Easing.Quadratic.InOut)
+            .onUpdate(() => {
+                camera.lookAt(storedMarkerPosition);
+                controls.target.set(marker.targetx, marker.targety, marker.targetz)
+            })
+            .onComplete(() => {
+                camera.lookAt(storedMarkerPosition);
+                controls.target.set(marker.targetx, marker.targety, marker.targetz)
+            })
+            .start();
+        })
+        .start();
+  }
+  
 // Controls
 function setupControls(){
     const controls = new OrbitControls(camera, canvas)
@@ -550,6 +612,7 @@ const tick = () =>
 
     // Update controls
     controls.update()
+    TWEEN.update();
 
     // Render
     renderer.render(scene, camera)
