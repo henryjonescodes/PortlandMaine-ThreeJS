@@ -87,14 +87,10 @@ const params = {
     helperx: 0,
     helpery: 2,
     helperz: 0,
-    fov: 8,
     animationDuration: 1000
 }
 
 const cameraSettings = {
-    x: 79.39020840624255,
-    y: 5.30854889867763,
-    z: 44.76856193642261,
     cameraPositionX: 79.39020840624255,
     cameraPositionY: 5.30854889867763,
     cameraPositionZ: 44.76856193642261,
@@ -104,9 +100,6 @@ const cameraSettings = {
     targetz: 0
 }
 const cameraSettings1 = {
-    x: 10.09952891398274,
-    y: 5.283287750839582,
-    z: 0.6046661058867199,
     cameraPositionX: 10.09952891398274,
     cameraPositionY: 5.283287750839582,
     cameraPositionZ: 0.6046661058867199,
@@ -116,64 +109,22 @@ const cameraSettings1 = {
     targetz: 38
 }
 
+const cameraSettings2 = {
+    cameraPositionX: 19.549670902554276,
+    cameraPositionY: 1.9951785273600007,
+    cameraPositionZ: 12.074181724836727,
+    fov: 40,
+    targetx: 19,
+    targety: 1.1,
+    targetz: 24
+}
+
+
 const oceanSettings = {
     oceanColor: 0x001e0f,
     oceanSunColor: 0xffffff,
     distortionScale: 2.5,
     timeModifier: 320
-}
-
-/**
- * Helper Cube functions
- */
-let helper = null
-const debugObject = {}
-debugObject.placeHelper = () => {
-    if(!helper){
-        console.log("placing helper")
-        helper = createBox(
-            1,
-            1,
-            1,
-        {
-            x: params.helperx,
-            y: params.helpery,
-            z: params.helperz
-        })
-        scene.add(helper)
-    }
-}
-
-//HelperBox
-const boxGeometry = new THREE.BoxGeometry(1, 1, 1)
-const boxMaterial = new THREE.MeshStandardMaterial({
-     metalness: 0.3,
-     roughness: 0.4,
-})
- 
-const createBox = (width, height, depth, position) =>{
-    //Three.js Mesh
-    const mesh = new THREE.Mesh(boxGeometry, boxMaterial)
-    mesh.scale.set(width, height, depth)
-    mesh.castShadow = true
-    mesh.position.copy(position)
-    return mesh
-}
-
-/**
- * Camera Setter Functions
- */
-debugObject.setCameraPosition0 = () => {
-    updateCameraSettings(cameraSettings)
-}
-
-debugObject.setCameraPosition1 = () => {
-    updateCameraSettings(cameraSettings1)
-}
-
-debugObject.logCamera = () => {
-    console.log("Camera Details")
-    console.log(camera)
 }
 
 //Start Loading Stuff -----------------------------------------------------------------------------------------------------
@@ -370,6 +321,10 @@ const button2 = new THREE.Mesh(buttonGeometry,buttonMaterial)
 button2.position.set(9.5,2,26)
 scene.add(button2)
 
+const button3 = new THREE.Mesh(buttonGeometry,buttonMaterial)
+button3.position.set(19,1.8,24)
+scene.add(button3)
+
 /**
  * Lights
  */
@@ -412,13 +367,14 @@ window.addEventListener('click', () =>
             case button1:
                 console.log('Button1')
                 cameraToMarker(cameraSettings1)
-                // easeCameraTo(cameraSettings1)
-                // updateCameraSettings(cameraSettings1)
                 break
             case button2:
                 console.log('Button2')
+                cameraToMarker(cameraSettings2)
+                break
+            case button3:
+                console.log('Button3')
                 cameraToMarker(cameraSettings)
-                // updateCameraSettings(cameraSettings)
                 break
         }
     }
@@ -450,6 +406,43 @@ window.addEventListener('resize', () =>
  * GUI Items
  */
 // 3D Cursor GUI
+/**
+ * Helper Cube functions
+ */
+let helper = null
+const debugObject = {}
+debugObject.placeHelper = () => {
+    if(!helper){
+        console.log("placing helper")
+        helper = createBox(
+            1,
+            1,
+            1,
+        {
+            x: params.helperx,
+            y: params.helpery,
+            z: params.helperz
+        })
+        scene.add(helper)
+    }
+}
+ 
+//HelperBox
+const boxGeometry = new THREE.BoxGeometry(1, 1, 1)
+const boxMaterial = new THREE.MeshStandardMaterial({
+    metalness: 0.3,
+    roughness: 0.4,
+})
+
+const createBox = (width, height, depth, position) =>{
+    //Three.js Mesh
+    const mesh = new THREE.Mesh(boxGeometry, boxMaterial)
+    mesh.scale.set(width, height, depth)
+    mesh.castShadow = true
+    mesh.position.copy(position)
+    return mesh
+}
+
 var helperGUI = gui.addFolder("Cube Helper")
 helperGUI.add(debugObject, 'placeHelper')
 helperGUI.add(params, 'helperx').min(-100).max(100).step(0.001)
@@ -457,10 +450,12 @@ helperGUI.add(params, 'helpery').min(-100).max(100).step(0.001)
 helperGUI.add(params, 'helperz').min(-100).max(100).step(0.001)
 
 // Camera GUI
+debugObject.logCamera = () => {
+    console.log("Camera Details")
+    console.log(camera)
+}
+
 var cameraGUI = gui.addFolder("Camera")
-cameraGUI.add(params, 'fov').min(0).max(120).step(0.001)
-cameraGUI.add(debugObject, 'setCameraPosition0')
-cameraGUI.add(debugObject, 'setCameraPosition1')
 cameraGUI.add(debugObject, 'logCamera')
 
 // Ocean GUI
@@ -468,40 +463,8 @@ const oceanFolder = gui.addFolder("Ocean")
 oceanFolder.add(oceanSettings, 'timeModifier').min(0).max(500).step(1)
 
 /**
- * Scene Setup Functions
+ * Camera Movements
  */
-// Camera
-function setupCamera(){
-    const camera = new THREE.PerspectiveCamera(params.fov, sizes.width / sizes.height, 0.1, 1000)
-    camera.position.set(cameraSettings.x,cameraSettings.y,cameraSettings.z)
-    scene.add(camera)
-    return camera
-}
-
-function updateCameraSettings(settings){
-    camera.position.set(settings.x,settings.y,settings.z)
-    camera.lookAt(new THREE.Vector3(settings.targetx,settings.targety,settings.targetz))
-    controls.target.set(settings.targetx,settings.targety,settings.targetz)
-    params.fov = settings.fov
-}
-
-const marker = {
-    cameraPositionX: 10.09952891398274,
-    cameraPositionY: 5.283287750839582,
-    cameraPositionZ: 0.6046661058867199,
-    fov: 40,
-    targetx: 9.2,
-    targety: 1.8,
-    targetz: 38
-}
-const getNewPointOnVector = (p1, p2) => {
-    let distAway = 200;
-    let vector = {x: p2.x - p1.x, y: p2.y - p1.y, z:p2.z - p1.z};
-    let vl = Math.sqrt(Math.pow(vector.x, 2) + Math.pow(vector.y, 2) + Math.pow(vector.z, 2));
-    let vectorLength = {x: vector.x/vl, y: vector.y/vl, z: vector.z/vl};
-    let v = {x: distAway * vectorLength.x, y: distAway * vectorLength.y, z: distAway * vectorLength.z};
-    return {x: p2.x + v.x, y: p2.y + v.y, z: p2.z + v.z};
-  }
 /**
  * Big Boi Tween Time
  * Function Structure is as follows:
@@ -535,7 +498,8 @@ function cameraToMarker(marker) {
                 new TWEEN.Tween(camera.position)
                 .to({
                     x: marker.cameraPositionX,
-                    y: camera.position.y,
+                    y: marker.cameraPositionY,
+                    // y: camera.position.y,
                     z: marker.cameraPositionZ,
                 }, params.animationDuration)
                 .onStart(() => {
@@ -576,7 +540,18 @@ function cameraToMarker(marker) {
             controls.target.set(marker.targetx, marker.targety, marker.targetz)
         })
         .start();
-  }
+}
+
+/**
+ * Scene Setup Functions
+ */
+// Camera
+function setupCamera(){
+    const camera = new THREE.PerspectiveCamera(cameraSettings.fov, sizes.width / sizes.height, 0.1, 1000)
+    camera.position.set(cameraSettings.cameraPositionX,cameraSettings.cameraPositionY,cameraSettings.cameraPositionZ)
+    scene.add(camera)
+    return camera
+}
 
 // Controls
 function setupControls(){
@@ -628,13 +603,9 @@ const tick = () =>
     //Helper
     if(helper){ helper.position.set(params.helperx,params.helpery,params.helperz)}    
 
-    // Update camera
-    // camera.fov = params.fov
-    camera.updateProjectionMatrix();
-
     //Raycasting from mouse pointer
     raycaster.setFromCamera(mouse, camera)
-    const objectsToTest = [button1, button2]
+    const objectsToTest = [button1, button2, button3]
     const intersects = raycaster.intersectObjects(objectsToTest)
 
     if(intersects.length){
