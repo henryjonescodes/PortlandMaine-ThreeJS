@@ -44,6 +44,7 @@ loadingManager.onError = function ( url ) {
 function onTransitionEnd( event ) {
 	event.target.remove();
 }
+
 //Models
 const dracoLoader = new DRACOLoader(loadingManager)
 dracoLoader.setDecoderPath('/draco/')
