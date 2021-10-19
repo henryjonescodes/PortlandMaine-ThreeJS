@@ -57,21 +57,7 @@ const cubeTextureLoader = new THREE.CubeTextureLoader(loadingManager)
 //Fonts
 const fontLoader = new THREE.FontLoader(loadingManager)
 
-//Helper function for main file loading
-function useLoader(url, loader) {
-    return new Promise(resolve => {
-        loader.load(url, resolve);
-    });
-}
-
-
-
-function loadBakedTexture(url, loader) {
-    const temp = loader.load(url)
-    temp.flipY = false
-    return temp
-}
-
+//Helper functions for main file loading
 function loadWithPromise(url, loader){
     return new Promise((resolve, reject) => {
         loader.load(url, data=> resolve(data), null, reject);
@@ -190,10 +176,6 @@ debugObject.logCamera = () => {
     console.log(camera)
 }
 
-const setCamera = (x,y,z) => {
-    camera.position.set(x,y,z)
-}
-
 //Gui
 var cameraGUI = gui.addFolder("Camera")
 cameraGUI.add(params, 'fov').min(0).max(120).step(0.001)
@@ -207,8 +189,6 @@ cameraGUI.add(debugObject, 'logCamera')
  * Load Materials
  */
 //General
-const matcapTexture = textureLoader.load('/textures/matcaps/1.png')
-const textMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture })
 const waterTexture = textureLoader.load('/textures/Misc/waternormals.jpg', function ( texture ) {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
     }) 
@@ -290,19 +270,44 @@ let FortGorges = doLoading(
 )
 
 /**
- * Load Fonts
+ * Load Fonts and Matcaps
  */
-let helvetica
-let fontLoadPromise = useLoader('/fonts/helvetiker_regular.typeface.json',fontLoader).then(result => { helvetica = result })
+let helvetica, matcapTexture
+let fontLoadPromise = loadWithPromise('/fonts/helvetiker_regular.typeface.json',fontLoader).then(result => { helvetica = result })
+let matcapTexturePromise = loadWithPromise('/textures/matcaps/1.png',textureLoader).then(result =>{ matcapTexture = result})
 
 //End Loading Hell -----------------------------------------------------------------------------------------------------
 
 /**
  * Handle Loaded Data
  */
+//Make Text Geometry
+function generateTextGeometry(text, font, size, height){
+    //Generate Text and add to scene
+    const textGeometry = new THREE.TextGeometry(
+       text,
+       {
+           font: font,
+           size: size,
+           height: height,
+           curveSegments: 4,
+           bevelEnabled: true,
+           bevelThickness: 0.03,
+           bevelSize: 0.02,
+           bevelOffset: 0,
+           bevelSegments: 5
+       }
+   )
+   textGeometry.computeBoundingBox()
+   textGeometry.center()
+   return textGeometry
+}
 
 //Generate Scene Text after Font/Matcap Load
-Promise.all([fontLoadPromise]).then(() => {
+let greetingText, cityText, cityText1, overViewText
+Promise.all([fontLoadPromise, matcapTexturePromise]).then(() => {
+    const textMaterial = new THREE.MeshMatcapMaterial({ matcap: matcapTexture })
+
     //Greeting Text
     const greetingTextGeometry = generateTextGeometry('Hi, I\'m Henry',helvetica, 0.5, 0.2)
     greetingText = new THREE.Mesh(greetingTextGeometry, textMaterial)
@@ -361,28 +366,6 @@ const water = buildWater()
 const oceanFolder = gui.addFolder("Ocean")
 oceanFolder.add(oceanSettings, 'timeModifier').min(0).max(500).step(1)
 
-//Text objects
-let greetingText, cityText, cityText1, overViewText
-function generateTextGeometry(text, font, size, height){
-     //Generate Text and add to scene
-     const textGeometry = new THREE.TextGeometry(
-        text,
-        {
-            font: font,
-            size: size,
-            height: height,
-            curveSegments: 4,
-            bevelEnabled: true,
-            bevelThickness: 0.03,
-            bevelSize: 0.02,
-            bevelOffset: 0,
-            bevelSegments: 5
-        }
-    )
-    textGeometry.computeBoundingBox()
-    textGeometry.center()
-    return textGeometry
-}
 
 /**
  * Non Loaded Objects
@@ -485,21 +468,9 @@ camera.position.set(
 scene.add(camera)
 
 function updateCameraSettings(settings){
-    camera.position.set(
-        settings.x,
-        settings.y,
-        settings.z
-    )
-    camera.lookAt(new THREE.Vector3(
-            settings.targetx,
-            settings.targety,
-            settings.targetz
-        ))
-    controls.target.set(
-            settings.targetx,
-            settings.targety,
-            settings.targetz
-        )
+    camera.position.set(settings.x,settings.y,settings.z)
+    camera.lookAt(new THREE.Vector3(settings.targetx,settings.targety,settings.targetz))
+    controls.target.set(settings.targetx,settings.targety,settings.targetz)
     params.fov = settings.fov
 }
 
@@ -520,6 +491,10 @@ renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 /**
+ * Setup Main Scene
+ */
+
+/**
  * Animation Loop Stuff
  */
 const clock = new THREE.Clock()
@@ -535,19 +510,10 @@ const tick = () =>
     water.material.uniforms[ 'time' ].value += 1.0 / oceanSettings.timeModifier;
 
     //Mixer
-    if(mixer)
-    {
-        mixer.update(deltaTime)
-    }
+    if(mixer){mixer.update(deltaTime)}
 
     //Helper
-    if(helper){
-        helper.position.set(
-            params.helperx,
-            params.helpery,
-            params.helperz
-        )
-    }    
+    if(helper){ helper.position.set(params.helperx,params.helpery,params.helperz)}    
 
     // Update camera
     camera.fov = params.fov
@@ -555,35 +521,20 @@ const tick = () =>
 
     //Raycasting from mouse pointer
     raycaster.setFromCamera(mouse, camera)
-
     const objectsToTest = [button1, button2]
     const intersects = raycaster.intersectObjects(objectsToTest)
 
-    if(intersects.length)
-    {
-        if(!currentIntersect)
-        {
-            console.log('mouse enter')
-        }
-
+    if(intersects.length){
+        if(!currentIntersect){console.log('mouse enter')}
         currentIntersect = intersects[0]
-    }
-    else
-    {
-        if(currentIntersect)
-        {
-            console.log('mouse leave')
-        }
-
+    } else {
+        if(currentIntersect){console.log('mouse leave')}
         currentIntersect = null
     }
-
-    for(const object of objectsToTest)
-    {
+    for(const object of objectsToTest){
         object.material.color.set('#ff0000')
     }
-    for(const intersect of intersects)
-    {
+    for(const intersect of intersects){
         intersect.object.material.color.set('#0000ff')
     }
 
