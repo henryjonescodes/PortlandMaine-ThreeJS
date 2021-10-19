@@ -88,6 +88,7 @@ const params = {
     helpery: 2,
     helperz: 0,
     fov: 8,
+    animationDuration: 1000
 }
 
 const cameraSettings = {
@@ -501,42 +502,82 @@ const getNewPointOnVector = (p1, p2) => {
     let v = {x: distAway * vectorLength.x, y: distAway * vectorLength.y, z: distAway * vectorLength.z};
     return {x: p2.x + v.x, y: p2.y + v.y, z: p2.z + v.z};
   }
-
+/**
+ * Big Boi Tween Time
+ * Function Structure is as follows:
+ * 
+ * Quaternion Tween
+ *      -Field of View Tween
+ *          -Camera Position Tween
+ *              -Camera/Controls Target Tween
+ * 
+ * All values are tweened simultaniously (via chaining the onStart() methods)
+ * Special thanks to Dan Hammond and his wonderful blog post detailing this 
+ * method: https://blogs.perficient.com/2020/05/21/3d-camera-movement-in-three-js-i-learned-the-hard-way-so-you-dont-have-to/
+ */
 function cameraToMarker(marker) {
-    const currentCamPosition = {x: camera.position.x, y: camera.position.y, z: camera.position.z};
     const storedMarkerPosition = new THREE.Vector3(marker.targetx, marker.targety, marker.targetz);
     const startQuaternion = camera.quaternion.clone();
     camera.lookAt(storedMarkerPosition);
     const endQuaternion = camera.quaternion.clone();
     camera.quaternion.set(startQuaternion);
     let time = {t: 0};
+    let currentFov = {fov: camera.fov}
+    let currentTarget = {x: controls.target.x,y: controls.target.y,z: controls.target.z}
+
+
     new TWEEN.Tween(time)
-        .to({t: 1}, 500)
+        .to({t: 1}, params.animationDuration/2)
+        .onStart(() =>{
+            new TWEEN.Tween(currentFov)
+            .to({fov: marker.fov}, params.animationDuration)
+            .onStart(() =>{
+                new TWEEN.Tween(camera.position)
+                .to({
+                    x: marker.cameraPositionX,
+                    y: camera.position.y,
+                    z: marker.cameraPositionZ,
+                }, params.animationDuration)
+                .onStart(() => {
+                    new TWEEN.Tween(currentTarget)
+                    .to({
+                        x: marker.targetx,
+                        y: marker.targety,
+                        z: marker.targetz
+                    }, params.animationDuration)
+                    .easing(TWEEN.Easing.Quadratic.InOut)
+                    .onUpdate(() =>{
+                        camera.lookAt(new THREE.Vector3(currentTarget.x, currentTarget.y, currentTarget.z));
+                        controls.target.set(currentTarget.x, currentTarget.y, currentTarget.z)
+                    })
+                    .start()
+                })
+                .easing(TWEEN.Easing.Quadratic.InOut)
+                .start();
+            })
+            .easing(TWEEN.Easing.Quadratic.InOut)
+            .onUpdate(() => {
+                camera.fov = currentFov.fov
+                camera.updateProjectionMatrix();
+            })
+            .onComplete(() => {
+                camera.fov = marker.fov
+                camera.updateProjectionMatrix();
+            })
+            .start();
+        })
         .easing(TWEEN.Easing.Quadratic.InOut)
         .onUpdate(() => {
             camera.quaternion.slerpQuaternions(startQuaternion, endQuaternion, time.t);
         })
         .onComplete(() => {
-            new TWEEN.Tween(camera.position)
-            .to({
-                x: marker.cameraPositionX,
-                y: camera.position.y,
-                z: marker.cameraPositionZ,
-            })
-            .easing(TWEEN.Easing.Quadratic.InOut)
-            .onUpdate(() => {
-                camera.lookAt(storedMarkerPosition);
-                controls.target.set(marker.targetx, marker.targety, marker.targetz)
-            })
-            .onComplete(() => {
-                camera.lookAt(storedMarkerPosition);
-                controls.target.set(marker.targetx, marker.targety, marker.targetz)
-            })
-            .start();
+            camera.quaternion.set(endQuaternion);
+            camera.lookAt(storedMarkerPosition);
+            controls.target.set(marker.targetx, marker.targety, marker.targetz)
         })
         .start();
   }
-  
+
 // Controls
 function setupControls(){
     const controls = new OrbitControls(camera, canvas)
@@ -588,7 +629,7 @@ const tick = () =>
     if(helper){ helper.position.set(params.helperx,params.helpery,params.helperz)}    
 
     // Update camera
-    camera.fov = params.fov
+    // camera.fov = params.fov
     camera.updateProjectionMatrix();
 
     //Raycasting from mouse pointer
@@ -597,10 +638,10 @@ const tick = () =>
     const intersects = raycaster.intersectObjects(objectsToTest)
 
     if(intersects.length){
-        if(!currentIntersect){console.log('mouse enter')}
+        // if(!currentIntersect){console.log('mouse enter')}
         currentIntersect = intersects[0]
     } else {
-        if(currentIntersect){console.log('mouse leave')}
+        // if(currentIntersect){console.log('mouse leave')}
         currentIntersect = null
     }
     for(const object of objectsToTest){
