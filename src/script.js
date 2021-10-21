@@ -103,7 +103,7 @@ const cameraSettings1 = {
     cameraPositionX: 10.09952891398274,
     cameraPositionY: 5.283287750839582,
     cameraPositionZ: 0.6046661058867199,
-    fov: 40,
+    fov: 35,
     targetx: 9.2,
     targety: 1.8,
     targetz: 38
@@ -207,11 +207,24 @@ let BugLight = doLoading(
     '/textures/BugLight/BugLight.png', textureLoader
 )
 
-//Bug Light
+//Fort Gorges
 let FortGorges = doLoading(
     '/models/FortGorges/glTF-Draco/FortGorges.glb', gltfLoader,
     '/textures/FortGorges/FortGorges.png', textureLoader
 )
+
+//City
+let City_Modeled = doLoading(
+    '/models/City/glTF-Draco/City_Modeled.glb', gltfLoader,
+    '/textures/City/City_Modeled.png', textureLoader
+)
+
+let City_Projected = doLoading(
+    '/models/City/glTF-Draco/City_Projected.glb', gltfLoader,
+    '/textures/City/City_Projected.png', textureLoader
+)
+
+
 
 /**
  * Load Fonts and Matcaps
@@ -521,6 +534,7 @@ function cameraToMarker(marker) {
             })
             .easing(TWEEN.Easing.Quadratic.InOut)
             .onUpdate(() => {
+                console.log(currentFov.fov)
                 camera.fov = currentFov.fov
                 camera.updateProjectionMatrix();
             })
